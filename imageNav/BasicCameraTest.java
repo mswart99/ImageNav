@@ -5,11 +5,20 @@ import java.awt.Color;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import javax.imageio.ImageIO;
+import javax.swing.ButtonGroup;
+import javax.swing.ButtonModel;
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
+import javax.swing.JRadioButton;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.vecmath.Color3f;
@@ -28,7 +37,7 @@ import com.github.sarxos.webcam.Webcam;
 import com.github.sarxos.webcam.WebcamPanel;
 
 
-public class BasicCameraTest extends JFrame implements Runnable {
+public class BasicCameraTest extends JFrame implements Runnable, ActionListener {
 	//final int INTERVAL=1000;///you may use interval
 	//	IplImage image;
 	//	CanvasFrame canvas = new CanvasFrame("Web Cam");
@@ -48,13 +57,41 @@ public class BasicCameraTest extends JFrame implements Runnable {
 	protected FourPointNav fpn = new FourPointNav();
 	protected ImageFilterPanel[] processedImages = new ImageFilterPanel[2];
 //	protected SlideBox sp;
+	protected WebcamPanel webcamPanel;
 
 	public BasicCameraTest() {
 		super("Test webcam panel");
-		th = new Thread(this);
 
 		Container cp = getContentPane();
 		cp.setLayout(new BorderLayout());
+		JPanel controlPanel = new JPanel();
+		cp.add(controlPanel, BorderLayout.NORTH);
+		
+		JRadioButton runButton = new JRadioButton("Run");
+		runButton.addActionListener(this);
+		controlPanel.add(runButton);
+		JRadioButton stopButton = new JRadioButton("Stop");
+		stopButton.addActionListener(this);
+		controlPanel.add(stopButton);
+		// Link the two
+		ButtonGroup bg = new ButtonGroup();
+		bg.add(runButton);
+		bg.add(stopButton);
+		
+		JRadioButton camButton = new JRadioButton("Webcam");
+		camButton.addActionListener(this);
+		controlPanel.add(camButton);
+		JRadioButton fileButton = new JRadioButton("Local Files");
+		fileButton.addActionListener(this);
+		controlPanel.add(fileButton);
+		ButtonGroup bg2 = new ButtonGroup();
+		bg2.add(camButton);
+		bg2.add(fileButton);
+
+		JButton loadButton = new JButton("Load Image");
+		loadButton.addActionListener(this);
+		controlPanel.add(loadButton);
+		
 		JPanel gridPanel = new JPanel(new GridLayout(2,2,5,5));
 		cp.add(gridPanel, BorderLayout.CENTER);
 
@@ -62,7 +99,8 @@ public class BasicCameraTest extends JFrame implements Runnable {
 		webcam = allcams.get(0);
 		Dimension[] viewSizes = webcam.getViewSizes();
 		webcam.setViewSize(viewSizes[0]);
-		WebcamPanel webcamPanel = new WebcamPanel(webcam);
+		// Load it but don't start
+		webcamPanel = new WebcamPanel(webcam, false);
 		gridPanel.add(webcamPanel);
 
 		ip = new ImagePanel("Webcam analytics");
@@ -73,39 +111,83 @@ public class BasicCameraTest extends JFrame implements Runnable {
 			gridPanel.add(processedImages[i]);
 		}
 
-		// Now the controls
-//		JPanel controlPanel = new JPanel(new BorderLayout());
-//		cp.add(controlPanel, BorderLayout.NORTH);
-//		controlPanel.add(navLEDcolor.getPanel(), BorderLayout.WEST);
-//		controlPanel.add(refLEDcolor.getPanel(), BorderLayout.EAST);
-//		sp = new SlideBox(SlideBox.HORIZONTAL, "Color Match", 0, 
-//				255, 1, "", Color.LIGHT_GRAY);
-//		sp.setEnabled(true);
-//		controlPanel.add(sp, BorderLayout.NORTH);
-
 		pack();
 		setVisible(true);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		th.start();
 	}
-
-	// TO DO: create Color3fPanel that allows us to set RGB and see it as a color on the panel
-	// TO DO: create brightnessSlider to set brightness threshold (0-255)
-
-//	private Color3fPanel navLEDcolor = new Color3fPanel(LedGroup.green, "Navigation Color");
-//	private Color3fPanel refLEDcolor = new Color3fPanel(LedGroup.red, "Reference Color");
+	
+	private boolean useWebcam = true;	// Default is to use the webcam
+	
+	public void actionPerformed(ActionEvent aEvent) {
+		String actionC = aEvent.getActionCommand();
+		if (actionC.equals("Run")) {
+			th = new Thread(this);
+			th.start();
+			
+		} else if (actionC.equals("Stop")) {
+			th = null;
+		} else if (actionC.equals("Webcam")) {
+			webcamPanel.start();
+			useWebcam = true;
+		} else if (actionC.equals("Local Files")) {
+			useWebcam = false;
+			webcamPanel.pause();
+			localImages = loadLocalImages();
+		} else if (actionC.equals("Load Image")) {
+			loadAndProcessImage();
+		}
+		
+	}
+	
+	protected BufferedImage[] localImages;
+	
+	/** Grabs all PNG, GIF and JPG and returns as BufferedImages
+	 * 
+	 * @return
+	 */
+	public static BufferedImage[] loadLocalImages() {
+		return(null);
+	}
+	
+	protected String[] imageExtensions = {"jpg", "png", "gif", "bmp"};
+	
+	public void loadAndProcessImage() {
+		File imgFile = Utils.openFile(this, "Choose Image File", imageExtensions, "Image Files");
+		try {
+			runImage(ImageIO.read(imgFile));
+		} catch (IOException ioe) {
+			// TODO Auto-generated catch block
+			try {
+				System.err.println("Trouble with i/o on " + imgFile.getCanonicalPath() 
+						+ ": " + ioe.getMessage());
+			} catch (IOException ioe2) {
+				// TODO Auto-generated catch block
+				System.err.println("Couldn't handle the image file! " + ioe2.getMessage());
+			}
+		}
+	}
 
 	public void run() {
 		while (th == Thread.currentThread()) {
 			Utils.sleep(2000);
-			BufferedImage bi = webcam.getImage();
-			ip.processImage(bi);
-//			int colorMatchThreshold = (int) sp.getValue();
-			processedImages[0].processImage(bi);
-			processedImages[1].processImage(bi);
-			fpn.convertImageToNavPoints(bi, processedImages[0].getFilterColor(), 
-					processedImages[1].getFilterColor(), 
-					processedImages[0].getMatchThreshold(), false);
+			if (useWebcam) {
+			   runImage(webcam.getImage());
+			}
 		}
 	}
+
+	public void runImage(BufferedImage bi) {
+		// Put it on the main ImagePanel, unaltered
+		ip.processImage(bi);
+//		int colorMatchThreshold = (int) sp.getValue();
+		// Process it on both of our processing panels
+		processedImages[0].processImage(bi);
+		processedImages[1].processImage(bi);
+		// Attempt a nav solution
+		fpn.convertImageToNavPoints(bi, processedImages[0].getFilterColor(), 
+				processedImages[1].getFilterColor(), 
+				processedImages[0].getMatchThreshold(), false);
+		
+	}
+
 }
