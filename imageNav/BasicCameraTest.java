@@ -26,6 +26,7 @@ import javax.vecmath.Color3f;
 import mas.j3d.LedGroup;
 import mas.j3d.utils.Color3fPanel;
 import mas.j3d.utils.FourPointNav;
+import mas.j3d.utils.FourPointNavPanel;
 import mas.j3d.utils.J3dUtils;
 import mas.swing.ImageFilterPanel;
 import mas.swing.ImagePanel;
@@ -54,7 +55,7 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 	protected ImagePanel ip;
 	protected Webcam webcam;
 	protected Thread th;
-	protected FourPointNav fpn = new FourPointNav();
+	protected FourPointNavPanel fpn;
 	protected ImageFilterPanel[] processedImages = new ImageFilterPanel[2];
 //	protected SlideBox sp;
 	protected WebcamPanel webcamPanel;
@@ -92,7 +93,7 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 		loadButton.addActionListener(this);
 		controlPanel.add(loadButton);
 		
-		JPanel gridPanel = new JPanel(new GridLayout(2,2,5,5));
+		JPanel gridPanel = new JPanel(new GridLayout(3,2,5,5));
 		cp.add(gridPanel, BorderLayout.CENTER);
 
 		java.util.List<Webcam> allcams = Webcam.getWebcams();
@@ -110,6 +111,8 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 		for (int i=0; i < 2; i++) {
 			gridPanel.add(processedImages[i]);
 		}
+		fpn = new FourPointNavPanel();
+		gridPanel.add(fpn);
 
 		pack();
 		setVisible(true);
@@ -184,7 +187,7 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 		processedImages[0].processImage(bi);
 		processedImages[1].processImage(bi);
 		// Attempt a nav solution
-		fpn.convertImageToNavPoints(bi, processedImages[0].getFilterColor(), 
+		fpn.tetraNavCCD(bi, processedImages[0].getFilterColor(), 
 				processedImages[1].getFilterColor(), 
 				processedImages[0].getMatchThreshold(), false);
 		
