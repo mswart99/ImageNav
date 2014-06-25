@@ -2,6 +2,7 @@ package imageNav;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.GridLayout;
@@ -57,8 +58,14 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 	protected Thread th;
 	protected FourPointNavPanel fpn;
 	protected ImageFilterPanel[] processedImages = new ImageFilterPanel[2];
-//	protected SlideBox sp;
+	//	protected SlideBox sp;
 	protected WebcamPanel webcamPanel;
+	protected JButton nextButton;
+	public static final Color3f navColor = new Color3f(102.0f/255, 230.0f/255, 97.0f/255);
+	public static final Color3f refColor = new Color3f(207.0f/255, 24.0f/255/255, 43.0f/255/255);
+	public static final int navSphere = 71;
+	public static final int refSphere = 74;
+	
 
 	public BasicCameraTest() {
 		super("Test webcam panel");
@@ -67,7 +74,7 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 		cp.setLayout(new BorderLayout());
 		JPanel controlPanel = new JPanel();
 		cp.add(controlPanel, BorderLayout.NORTH);
-		
+
 		JRadioButton runButton = new JRadioButton("Run");
 		runButton.addActionListener(this);
 		controlPanel.add(runButton);
@@ -78,7 +85,7 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 		ButtonGroup bg = new ButtonGroup();
 		bg.add(runButton);
 		bg.add(stopButton);
-		
+
 		JRadioButton camButton = new JRadioButton("Webcam");
 		camButton.addActionListener(this);
 		controlPanel.add(camButton);
@@ -89,25 +96,34 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 		bg2.add(camButton);
 		bg2.add(fileButton);
 
+		nextButton = new JButton("Next Image");
+		nextButton.addActionListener(this);
+		nextButton.setEnabled(false);
+		controlPanel.add(nextButton);
+
 		JButton loadButton = new JButton("Load Image");
 		loadButton.addActionListener(this);
 		controlPanel.add(loadButton);
-		
+
+		JButton doNavButton = new JButton("Re-Do Nav");
+		doNavButton.addActionListener(this);
+		controlPanel.add(doNavButton);
+
 		JPanel gridPanel = new JPanel(new GridLayout(3,2,5,5));
 		cp.add(gridPanel, BorderLayout.CENTER);
 
-		java.util.List<Webcam> allcams = Webcam.getWebcams();
-		webcam = allcams.get(0);
-		Dimension[] viewSizes = webcam.getViewSizes();
-		webcam.setViewSize(viewSizes[0]);
-		// Load it but don't start
-		webcamPanel = new WebcamPanel(webcam, false);
-		gridPanel.add(webcamPanel);
+//		java.util.List<Webcam> allcams = Webcam.getWebcams();
+//		webcam = allcams.get(0);
+//		Dimension[] viewSizes = webcam.getViewSizes();
+//		webcam.setViewSize(viewSizes[0]);
+//		// Load it but don't start
+//		webcamPanel = new WebcamPanel(webcam, false);
+//		gridPanel.add(webcamPanel);
 
 		ip = new ImagePanel("Webcam analytics");
 		gridPanel.add(ip);
-		processedImages[0] = new ImageFilterPanel("Navigation LED finder", LedGroup.green);
-		processedImages[1] = new ImageFilterPanel("Reference LED finder", LedGroup.red);
+		processedImages[0] = new ImageFilterPanel("Navigation LED finder", navColor, navSphere);
+		processedImages[1] = new ImageFilterPanel("Reference LED finder", refColor, refSphere);
 		for (int i=0; i < 2; i++) {
 			gridPanel.add(processedImages[i]);
 		}
@@ -118,55 +134,60 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 		setVisible(true);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
-	
+
 	private boolean useWebcam = true;	// Default is to use the webcam
-	
+
 	public void actionPerformed(ActionEvent aEvent) {
 		String actionC = aEvent.getActionCommand();
 		if (actionC.equals("Run")) {
 			th = new Thread(this);
 			th.start();
-			
+
 		} else if (actionC.equals("Stop")) {
 			th = null;
 		} else if (actionC.equals("Webcam")) {
 			webcamPanel.start();
 			useWebcam = true;
+			nextButton.setEnabled(false);
 		} else if (actionC.equals("Local Files")) {
 			useWebcam = false;
 			webcamPanel.pause();
-			localImages = loadLocalImages();
+			localImages = Utils.loadLocalImages(this, imageExtensions);
+			imageCounter = 0;
+			nextButton.setEnabled(true);
 		} else if (actionC.equals("Load Image")) {
 			loadAndProcessImage();
+		} else if (actionC.equals("Next Image")) {
+			processImage(imageCounter++);
+		} else if (actionC.equals("Re-Do Nav")) {
+			runImage(activeImage);
 		}
-		
+
 	}
-	
-	protected BufferedImage[] localImages;
-	
-	/** Grabs all PNG, GIF and JPG and returns as BufferedImages
+
+	public void processImage(int imageNum) {
+		// Reset if we've run over the list
+		if (imageNum >= localImages.length) {
+			imageNum = 0;
+		}
+		runImage(localImages[imageNum]);
+	}
+
+	/** Default is to have localImages hold only one image. This prevents null errors.
 	 * 
-	 * @return
 	 */
-	public static BufferedImage[] loadLocalImages() {
-		return(null);
-	}
-	
+	protected BufferedImage[] localImages;
+	protected BufferedImage activeImage;
+	protected int imageCounter;
 	protected String[] imageExtensions = {"jpg", "png", "gif", "bmp"};
-	
+
 	public void loadAndProcessImage() {
-		File imgFile = Utils.openFile(this, "Choose Image File", imageExtensions, "Image Files");
+		File imgFile = Utils.openFile(this, "Choose Image File", imageExtensions, "Image Files");		
 		try {
 			runImage(ImageIO.read(imgFile));
 		} catch (IOException ioe) {
-			// TODO Auto-generated catch block
-			try {
-				System.err.println("Trouble with i/o on " + imgFile.getCanonicalPath() 
-						+ ": " + ioe.getMessage());
-			} catch (IOException ioe2) {
-				// TODO Auto-generated catch block
-				System.err.println("Couldn't handle the image file! " + ioe2.getMessage());
-			}
+			System.err.println("Trouble with i/o on " + imgFile.getAbsolutePath()
+					+ ": " + ioe.getMessage());
 		}
 	}
 
@@ -174,23 +195,24 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 		while (th == Thread.currentThread()) {
 			Utils.sleep(2000);
 			if (useWebcam) {
-			   runImage(webcam.getImage());
+				runImage(webcam.getImage());
 			}
 		}
 	}
 
 	public void runImage(BufferedImage bi) {
+		// Store this image as the active image (so we can re-run)
+		activeImage = bi;
 		// Put it on the main ImagePanel, unaltered
 		ip.processImage(bi);
-//		int colorMatchThreshold = (int) sp.getValue();
+		//		int colorMatchThreshold = (int) sp.getValue();
 		// Process it on both of our processing panels
 		processedImages[0].processImage(bi);
 		processedImages[1].processImage(bi);
 		// Attempt a nav solution
 		fpn.tetraNavCCD(bi, processedImages[0].getFilterColor(), 
 				processedImages[1].getFilterColor(), 
-				processedImages[0].getMatchThreshold(), false);
-		
+				processedImages[0].getMatchThreshold(), true);
 	}
 
 }
