@@ -151,8 +151,10 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 			nextButton.setEnabled(false);
 		} else if (actionC.equals("Local Files")) {
 			useWebcam = false;
-			webcamPanel.pause();
-			localImages = Utils.loadLocalImages(this, imageExtensions);
+			if (webcamPanel != null) {
+				webcamPanel.pause();
+			}
+			localImages = Utils.loadLocalImages(this);
 			imageCounter = 0;
 			nextButton.setEnabled(true);
 		} else if (actionC.equals("Load Image")) {
@@ -179,7 +181,7 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 	protected BufferedImage[] localImages;
 	protected BufferedImage activeImage;
 	protected int imageCounter;
-	protected String[] imageExtensions = {"jpg", "png", "gif", "bmp"};
+	protected static final String[] imageExtensions = {"jpg", "png", "gif", "bmp"};
 
 	public void loadAndProcessImage() {
 		File imgFile = Utils.openFile(this, "Choose Image File", imageExtensions, "Image Files");		
@@ -201,6 +203,10 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 	}
 
 	public void runImage(BufferedImage bi) {
+		if (bi == null) {
+			System.err.println("Tried to process a null image");
+			return;
+		}
 		// Store this image as the active image (so we can re-run)
 		activeImage = bi;
 		// Put it on the main ImagePanel, unaltered
