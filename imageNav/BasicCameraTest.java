@@ -33,6 +33,7 @@ import mas.swing.ImageFilterPanel;
 import mas.swing.ImagePanel;
 import mas.swing.SlideBox;
 import mas.swing.SliderPanel;
+import mas.utils.ImageFolderFilter;
 import mas.utils.Utils;
 
 import com.github.sarxos.webcam.Webcam;
@@ -112,13 +113,13 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 		JPanel gridPanel = new JPanel(new GridLayout(3,2,5,5));
 		cp.add(gridPanel, BorderLayout.CENTER);
 
-//		java.util.List<Webcam> allcams = Webcam.getWebcams();
-//		webcam = allcams.get(0);
-//		Dimension[] viewSizes = webcam.getViewSizes();
-//		webcam.setViewSize(viewSizes[0]);
-//		// Load it but don't start
-//		webcamPanel = new WebcamPanel(webcam, false);
-//		gridPanel.add(webcamPanel);
+		java.util.List<Webcam> allcams = Webcam.getWebcams();
+		webcam = allcams.get(0);
+		Dimension[] viewSizes = webcam.getViewSizes();
+		webcam.setViewSize(viewSizes[0]);
+		// Load it but don't start
+		webcamPanel = new WebcamPanel(webcam, false);
+		gridPanel.add(webcamPanel);
 
 		ip = new ImagePanel("Webcam analytics");
 		gridPanel.add(ip);
@@ -181,10 +182,10 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 	protected BufferedImage[] localImages;
 	protected BufferedImage activeImage;
 	protected int imageCounter;
-	protected static final String[] imageExtensions = {"jpg", "png", "gif", "bmp"};
 
 	public void loadAndProcessImage() {
-		File imgFile = Utils.openFile(this, "Choose Image File", imageExtensions, "Image Files");		
+		File imgFile = Utils.openFile(this, "Choose Image File", ImageFolderFilter.imageExtensions, 
+				"Image Files");		
 		try {
 			runImage(ImageIO.read(imgFile));
 		} catch (IOException ioe) {
