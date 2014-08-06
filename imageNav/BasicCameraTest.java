@@ -1,38 +1,17 @@
 package imageNav;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.GridLayout;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import javax.imageio.ImageIO;
-import javax.swing.ButtonGroup;
-import javax.swing.ButtonModel;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.JRadioButton;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
+import javax.swing.*;
 import javax.vecmath.Color3f;
 
-import mas.j3d.LedGroup;
-import mas.j3d.utils.Color3fPanel;
-import mas.j3d.utils.FourPointNav;
-import mas.j3d.utils.FourPointNavPanel;
-import mas.j3d.utils.J3dUtils;
-import mas.swing.ImageFilterPanel;
 import mas.swing.ImagePanel;
-import mas.swing.SlideBox;
-import mas.swing.SliderPanel;
 import mas.utils.ImageFolderFilter;
 import mas.utils.Utils;
 
@@ -51,10 +30,11 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 	private static final long serialVersionUID = 1L;
 
 	public static void main(String[] args) {
-		BasicCameraTest gs = new BasicCameraTest();
+//		BasicCameraTest gs = new BasicCameraTest();
+		new BasicCameraTest();
 	}
 
-	protected ImagePanel ip;
+	protected ImagePanel ip, pseudoIP;
 	protected Webcam webcam;
 	protected Thread th;
 	protected FourPointNavPanel fpn;
@@ -62,10 +42,10 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 	//	protected SlideBox sp;
 	protected WebcamPanel webcamPanel;
 	protected JButton nextButton;
-	public static final Color3f navColor = new Color3f(102.0f/255, 230.0f/255, 97.0f/255);
-	public static final Color3f refColor = new Color3f(207.0f/255, 24.0f/255/255, 43.0f/255/255);
-	public static final int navSphere = 71;
-	public static final int refSphere = 74;
+	public static final Color3f navColor = new Color3f(111.0f/255, 231.0f/255, 95.0f/255);
+	public static final Color3f refColor = new Color3f(202.0f/255, 51.0f/255, 56.0f/255);
+	public static final int navSphere = 69;
+	public static final int refSphere = 69;
 	
 
 	public BasicCameraTest() {
@@ -113,23 +93,26 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 		JPanel gridPanel = new JPanel(new GridLayout(3,2,5,5));
 		cp.add(gridPanel, BorderLayout.CENTER);
 
-		java.util.List<Webcam> allcams = Webcam.getWebcams();
-		webcam = allcams.get(0);
-		Dimension[] viewSizes = webcam.getViewSizes();
-		webcam.setViewSize(viewSizes[0]);
-		// Load it but don't start
-		webcamPanel = new WebcamPanel(webcam, false);
-		gridPanel.add(webcamPanel);
+//		java.util.List<Webcam> allcams = Webcam.getWebcams();
+//		webcam = allcams.get(0);
+//		Dimension[] viewSizes = webcam.getViewSizes();
+//		webcam.setViewSize(viewSizes[0]);
+//		// Load it but don't start
+//		webcamPanel = new WebcamPanel(webcam, false);
+//		gridPanel.add(webcamPanel);
+		gridPanel.add(new JPanel());
+		fpn = new FourPointNavPanel();
+		gridPanel.add(fpn);
 
 		ip = new ImagePanel("Webcam analytics");
 		gridPanel.add(ip);
+		pseudoIP = new ImagePanel("Pseudo Image");
+		gridPanel.add(pseudoIP);
 		processedImages[0] = new ImageFilterPanel("Navigation LED finder", navColor, navSphere);
 		processedImages[1] = new ImageFilterPanel("Reference LED finder", refColor, refSphere);
 		for (int i=0; i < 2; i++) {
 			gridPanel.add(processedImages[i]);
 		}
-		fpn = new FourPointNavPanel();
-		gridPanel.add(fpn);
 
 		pack();
 		setVisible(true);
@@ -203,6 +186,10 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 		}
 	}
 
+	/** Runs all the processing functions on the given image, and updates all the panels.
+	 * 
+	 * @param bi
+	 */
 	public void runImage(BufferedImage bi) {
 		if (bi == null) {
 			System.err.println("Tried to process a null image");
@@ -220,6 +207,9 @@ public class BasicCameraTest extends JFrame implements Runnable, ActionListener 
 		fpn.tetraNavCCD(bi, processedImages[0].getFilterColor(), 
 				processedImages[1].getFilterColor(), 
 				processedImages[0].getMatchThreshold(), true);
+		pseudoIP.processImage(
+				fpn.buildPseudoImage(processedImages[0].getFilterColor(), 
+						processedImages[1].getFilterColor()));
 	}
 
 }
